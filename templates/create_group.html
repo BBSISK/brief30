@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Create a Group — Brief{% endblock %}
+
+{% block content %}
+
+<h1>Create a<br><em>group</em></h1>
+
+<p class="mt-3" style="max-width: 400px;">
+    Give your group a name, choose who can join, then share the invite link.
+    That's all it takes.
+</p>
+
+{% if error %}
+    <div class="error mt-3">{{ error }}</div>
+{% endif %}
+
+<form method="POST" action="/groups/create" style="margin-top: 2.5rem;">
+    <div class="field">
+        <label for="name">Group name</label>
+        <input type="text" id="name" name="name" placeholder="e.g. The Lads, Farrelly Family, Form 3C" maxlength="60" autocomplete="off">
+    </div>
+
+    <div class="field" style="margin-top: 2rem;">
+        <label>Who can join?</label>
+        <div style="margin-top: 0.8rem; display: flex; flex-direction: column; gap: 1rem;">
+
+            <label style="display: flex; gap: 1rem; align-items: flex-start; cursor: pointer; font-family: var(--serif); font-size: 1rem; font-weight: 300; letter-spacing: 0; text-transform: none;">
+                <input type="radio" name="mode" value="open" checked style="margin-top: 0.25rem; accent-color: var(--accent);">
+                <span>
+                    <strong style="font-weight: 400;">Open</strong><br>
+                    <span style="font-size: 0.8rem; color: var(--muted);">Anyone with the invite link can join automatically.</span>
+                </span>
+            </label>
+
+            <label style="display: flex; gap: 1rem; align-items: flex-start; cursor: pointer; font-family: var(--serif); font-size: 1rem; font-weight: 300; letter-spacing: 0; text-transform: none;">
+                <input type="radio" name="mode" value="closed" style="margin-top: 0.25rem; accent-color: var(--accent);">
+                <span>
+                    <strong style="font-weight: 400;">Closed</strong><br>
+                    <span style="font-size: 0.8rem; color: var(--muted);">Only you can add people — the invite link shows a request page.</span>
+                </span>
+            </label>
+
+        </div>
+    </div>
+
+    <div class="gap-row mt-4">
+        <button type="submit" class="btn btn-accent">Create group</button>
+        <a href="/groups" class="btn btn-ghost">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

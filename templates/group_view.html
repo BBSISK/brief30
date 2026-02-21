@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} — Brief{% endblock %}
+
+{% block content %}
+
+{# ── Header ── #}
+<div style="margin-bottom: 0.5rem;">
+    <a href="/groups" style="font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none;">← groups</a>
+</div>
+
+<h1><em>{{ group.name }}</em></h1>
+
+<div class="gap-row mt-2" style="margin-bottom: 2.5rem;">
+    <span class="text-mono" style="color: var(--muted);">
+        {{ members | length }} member{% if members | length != 1 %}s{% endif %}
+        &middot; {{ group.mode }}
+    </span>
+</div>
+
+{# ── Invite link (visible to all members) ── #}
+<div class="claim-box">
+    <div class="label">Invite link — share this with people you want to add</div>
+    <div class="claim-url" id="inviteUrl">{{ invite_url }}</div>
+    <div class="gap-row" style="margin-top: 0.75rem; flex-wrap: wrap;">
+        <button class="btn btn-ghost" onclick="copyInvite()" id="copyBtn">Copy link</button>
+        {% if is_admin %}
+            <form method="POST" action="/groups/{{ group.id }}/toggle-mode" style="display:inline;">
+                <button type="submit" class="btn btn-ghost">
+                    Switch to {% if group.mode == 'open' %}closed{% else %}open{% endif %}
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<hr class="divider">
+
+{# ── Current entries — all members side by side ── #}
+<div class="timeline-header" style="margin-bottom: 1.5rem;">Right now</div>
+
+<div style="display: flex; flex-direction: column; gap: 0;">
+{% for member in members %}
+<div style="
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--faint);
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: 1.5rem;
+    align-items: start;
+">
+    <div>
+        <a href="/profile/{{ member.username }}" style="font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; color: var(--ink); text-decoration: none; text-transform: uppercase;">
+            {{ member.username }}
+        </a>
+        {% if member.is_admin %}
+            <div style="font-family: var(--mono); font-size: 0.52rem; color: var(--accent); letter-spacing: 0.1em; margin-top: 0.2rem; text-transform: uppercase;">admin</div>
+        {% endif %}
+        <div style="font-family: var(--mono); font-size: 0.52rem; color: var(--muted); margin-top: 0.2rem;">
+            {{ member.updated_at[:10] }}
+        </div>
+    </div>
+
+    <div style="font-family: var(--serif); font-size: 1rem; font-style: italic; line-height: 1.85; color: var(--ink);">
+        {% if member.mood %}<span style="font-style:normal; font-size:1.2rem; margin-right:0.4rem;">{{ member.mood }}</span>{% endif %}
+        {% if member.entry %}
+            "{{ member.entry }}"
+        {% else %}
+            <span style="font-style: normal; color: var(--muted); font-size: 0.85rem;">Nothing written yet.</span>
+        {% endif %}
+    </div>
+
+    <div>
+        {% if is_admin and member.username != username %}
+        <form method="POST" action="/groups/{{ group.id }}/remove/{{ member.username }}"
+              onsubmit="return confirm('Remove {{ member.username }} from this group?');"
+              style="display:inline;">
+            <button type="submit" class="btn btn-ghost" style="padding: 0.3rem 0.75rem; font-size: 0.52rem; border-color: var(--faint);">remove</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+</div>
+
+{# ── Snapshot History ── #}
+{% if snaps_by_user %}
+<div class="timeline" style="margin-top: 3rem;">
+    <div class="timeline-header">Snapshot history</div>
+
+    <details style="margin-top: 0.5rem;">
+        <summary style="font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); cursor: pointer; user-select: none; padding: 0.5rem 0;">
+            Show all snapshots
+        </summary>
+
+        <div style="margin-top: 1rem;">
+        {% for member in members %}
+            {% if snaps_by_user.get(member.username) %}
+            <div style="margin-bottom: 2rem;">
+                <div style="font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem;">
+                    {{ member.username }}
+                </div>
+                {% for snap in snaps_by_user[member.username] %}
+                <div class="snapshot">
+                    <div class="snapshot-date">{{ snap.taken_at[:10] }}</div>
+                    <div class="snapshot-entry">"{{ snap.entry }}"</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endfor %}
+        </div>
+    </details>
+</div>
+{% endif %}
+
+<hr class="divider">
+
+{# ── Danger zone ── #}
+<div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+    <form method="POST" action="/groups/{{ group.id }}/leave"
+          onsubmit="return confirm('Leave {{ group.name }}? You can rejoin later if the group is open.');">
+        <button type="submit" class="btn btn-ghost">Leave group</button>
+    </form>
+
+    {% if is_admin %}
+    <details>
+        <summary style="font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); cursor: pointer; user-select: none; padding: 0.75rem 2rem; border: 1px solid var(--faint);">
+            Delete group
+        </summary>
+        <div style="margin-top: 0.75rem; padding: 1rem; border: 1px solid var(--faint);">
+            <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 1rem;">
+                This will permanently delete the group and remove all members. Their entries and snapshots are kept — only the group is removed.
+            </p>
+            <form method="POST" action="/groups/{{ group.id }}/delete"
+                  onsubmit="return confirm('Delete {{ group.name }} permanently? This cannot be undone.');">
+                <button type="submit" class="btn" style="border-color: #c0392b; color: #c0392b;">Delete group permanently</button>
+            </form>
+        </div>
+    </details>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyInvite() {
+        const url = document.getElementById('inviteUrl').textContent.trim();
+        navigator.clipboard.writeText(url).then(() => {
+            const btn = document.getElementById('copyBtn');
+            btn.textContent = 'Copied';
+            setTimeout(() => btn.textContent = 'Copy link', 2000);
+        });
+    }
+</script>
+{% endblock %}

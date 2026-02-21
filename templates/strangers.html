@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Strangers — Brief{% endblock %}
+
+{% block content %}
+
+<h1>Thirty words from<br><em>strangers</em></h1>
+
+<p class="mt-3" style="max-width: 440px;">
+    These are real people who chose to share their current thirty words anonymously.
+    No names. No profiles. Just lives, as they are right now.
+</p>
+
+{% if entries %}
+<div style="margin-top: 3rem;">
+    {% for e in entries %}
+    <div style="padding: 1.75rem 0; border-bottom: 1px solid var(--faint);">
+        {% if e.mood %}<div style="font-size: 1.4rem; margin-bottom: 0.5rem;">{{ e.mood }}</div>{% endif %}
+        <div style="font-family: var(--serif); font-size: clamp(1rem, 2vw, 1.2rem); font-style: italic; font-weight: 300; line-height: 1.9; color: var(--ink);">"{{ e.entry }}"</div>
+        <div class="text-mono" style="margin-top: 0.6rem; color: var(--muted);">{{ e.updated_at[:10] }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div style="margin-top: 2.5rem;">
+    <p class="text-muted" style="font-size: 0.8rem;">
+        {{ entries | length }} entr{% if entries | length == 1 %}y{% else %}ies{% endif %} shared.
+        Entries are shown in random order and refresh each visit.
+    </p>
+</div>
+
+{% else %}
+<div style="margin-top: 3rem;">
+    <p class="text-muted">
+        No one has shared their entry here yet.
+        {% if request.cookies.get('username') %}
+            Be the first — visit your <a href="/profile/{{ request.cookies.get('username') }}" style="color: var(--accent);">profile</a> to opt in.
+        {% endif %}
+    </p>
+</div>
+{% endif %}
+
+{% if request.cookies.get('username') %}
+<div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--faint);">
+    <a href="/profile/{{ request.cookies.get('username') }}" class="btn btn-ghost">Manage my visibility</a>
+</div>
+{% endif %}
+
+{% endblock %}

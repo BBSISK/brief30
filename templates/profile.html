@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }} — Brief{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom: 0.5rem;">
+    <span class="label">{{ user.username }}</span>
+</div>
+<h1>{% if is_owner %}My thirty words{% else %}<em>{{ user.username }}</em>{% endif %}</h1>
+
+{% if error %}<div class="error mt-3">{{ error }}</div>{% endif %}
+
+{% if is_owner %}
+    <form method="POST" action="/update" id="updateForm" style="margin-top: 2rem;">
+        <div class="field">
+            <label for="entry">Your life, right now</label>
+            <textarea id="entry" name="entry" maxlength="400">{{ user.entry or '' }}</textarea>
+            <div class="word-counter" id="wordCounter">0 / 30</div>
+        </div>
+
+        <div class="field" style="margin-top: 1.25rem;">
+            <label>How do you feel right now? <span style="color: var(--muted); font-size: 0.85em;">(optional)</span></label>
+            <div class="mood-picker" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.75rem;">
+                <input type="radio" name="mood" id="mood-none" value="" class="mood-option" {% if not user.mood %}checked{% endif %}>
+                <label for="mood-none" class="mood-none-label">none</label>
+                {% for emoji in allowed_moods | sort %}
+                <input type="radio" name="mood" id="mood-p-{{ loop.index }}" value="{{ emoji }}" class="mood-option"
+                    {% if user.mood == emoji %}checked{% endif %}>
+                <label for="mood-p-{{ loop.index }}" class="mood-label" title="{{ emoji }}">{{ emoji }}</label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="gap-row mt-3" style="flex-wrap: wrap;">
+            <button type="submit" class="btn btn-accent">Update</button>
+            <a href="/export" class="btn btn-ghost">Export my history</a>
+            <a href="/claim-link" class="btn btn-ghost">My claim link</a>
+        </div>
+    </form>
+
+    {# ── Strangers feed toggle ── #}
+    <div style="margin-top: 2rem; padding: 1rem 1.25rem; border: 1px solid var(--faint); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <div class="label" style="margin-bottom: 0.3rem;">Strangers feed</div>
+            <p class="text-muted" style="font-size: 0.8rem; max-width: 320px;">
+                Show your current entry anonymously in the public <a href="/strangers" style="color: var(--accent);">strangers feed</a> — no username, no history.
+            </p>
+        </div>
+        <form method="POST" action="/strangers/toggle">
+            <button type="submit" class="btn {% if user.in_strangers %}btn-accent{% else %}btn-ghost{% endif %}" style="white-space: nowrap;">
+                {% if user.in_strangers %}Visible — click to hide{% else %}Hidden — click to share{% endif %}
+            </button>
+        </form>
+    </div>
+
+{% else %}
+    <div class="entry-text">
+        {% if user.mood %}<span style="font-size: 1.6rem; font-style: normal; display:block; margin-bottom:0.5rem;">{{ user.mood }}</span>{% endif %}
+        {% if user.entry %}"{{ user.entry }}"
+        {% else %}<span style="color: var(--muted); font-style: normal; font-size: 0.9rem;">Nothing written yet.</span>{% endif %}
+    </div>
+    <p class="text-mono" style="color: var(--muted);">Member since {{ user.created_at[:10] }}</p>
+{% endif %}
+
+{# ── Snapshot Timeline ── #}
+{% if snapshots %}
+<div class="timeline">
+    <div class="timeline-header">Snapshots</div>
+    {% for snap in snapshots %}
+    <div class="snapshot">
+        <div class="snapshot-date">
+            {{ snap.taken_at[:10] }}
+            {% if snap.mood %}<div style="font-size: 1.1rem; margin-top: 0.4rem;">{{ snap.mood }}</div>{% endif %}
+        </div>
+        <div class="snapshot-entry">"{{ snap.entry }}"</div>
+    </div>
+    {% endfor %}
+</div>
+{% elif is_owner %}
+<div style="margin-top: 3rem;">
+    <p class="text-muted" style="font-size: 0.8rem;">Your first snapshot will be saved when you write your entry. After that, a new snapshot is taken every 90 days — but only if something has changed.</p>
+</div>
+{% endif %}
+
+{% if is_owner %}
+
+{# ── Word stats ── #}
+{% if stats and stats.word_freq %}
+<div class="timeline" style="margin-top: 3rem;">
+    <div class="timeline-header">Your words</div>
+    <div style="margin-top: 1rem; padding: 1rem 0;">
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; line-height: 2.2;">
+            {% set max_count = stats.word_freq[0][1] %}
+            {% for word, count in stats.word_freq %}
+                {% set size = 0.65 + (count / max_count) * 0.85 %}
+                {% set opacity = 0.4 + (count / max_count) * 0.6 %}
+                <span style="
+                    font-family: var(--serif);
+                    font-size: {{ size }}rem;
+                    font-style: italic;
+                    color: var(--ink);
+                    opacity: {{ opacity }};
+                    cursor: default;
+                    transition: opacity 0.2s;
+                " title="{{ count }} time{% if count != 1 %}s{% endif %}">{{ word }}</span>
+            {% endfor %}
+        </div>
+        <div class="text-mono" style="margin-top: 1.5rem; color: var(--muted);">
+            {{ stats.snap_count }} snapshot{% if stats.snap_count != 1 %}s{% endif %} &middot;
+            member for {{ stats.days_member }} day{% if stats.days_member != 1 %}s{% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ── Time Capsules ── #}
+<div class="timeline" style="margin-top: 3rem;">
+    <div class="timeline-header">Time capsules</div>
+
+    {% if capsules %}
+        {% for cap in capsules %}
+        <div class="snapshot" style="grid-template-columns: 100px 1fr auto; align-items: start;">
+            <div>
+                <div class="snapshot-date">
+                    {% if cap.revealed %}
+                        <span style="color: var(--accent);">revealed</span><br>{{ cap.reveal_date[:10] }}
+                    {% else %}
+                        opens<br>{{ cap.reveal_date[:10] }}
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                {% if cap.revealed %}
+                    <div class="snapshot-entry">"{{ cap.entry }}"</div>
+                    <div class="text-mono" style="margin-top: 0.5rem; color: var(--muted);">Written {{ cap.created_at[:10] }}</div>
+                {% else %}
+                    <div style="font-family: var(--mono); font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; padding-top: 0.2rem;">
+                        Sealed. Opens in {{ ((cap.reveal_date[:10] | string | replace('-','')) | int - (now[:8] | string | replace('-','')) | int) // 10000 }} year(s).
+                    </div>
+                {% endif %}
+            </div>
+            <div>
+                {% if not cap.revealed %}
+                <form method="POST" action="/capsule/{{ cap.id }}/delete"
+                      onsubmit="return confirm('Delete this capsule? You will never know what you wrote.');">
+                    <button type="submit" class="btn btn-ghost" style="padding: 0.3rem 0.75rem; font-size: 0.52rem;">delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted" style="font-size: 0.8rem; margin: 1rem 0;">No capsules yet. Write thirty words for your future self.</p>
+    {% endif %}
+
+    {# Create capsule form #}
+    <details style="margin-top: 1.5rem;">
+        <summary style="font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); cursor: pointer; user-select: none; padding: 0.5rem 0;">
+            Write a new capsule
+        </summary>
+        <div style="margin-top: 1rem;">
+            <form method="POST" action="/capsule/create" id="capsuleForm">
+                <div class="field">
+                    <label for="capsule_entry">Your thirty words — for your future self</label>
+                    <textarea id="capsule_entry" name="capsule_entry" maxlength="400"
+                              placeholder="Who you are right now. What you hope for. What you're afraid of. What matters most today."></textarea>
+                    <div class="word-counter" id="capsuleCounter">0 / 30</div>
+                </div>
+                <div class="field" style="margin-top: 1.5rem;">
+                    <label>Seal for how long?</label>
+                    <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap;">
+                        {% for y in capsule_years %}
+                        <label style="cursor: pointer; font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 0.4rem;">
+                            <input type="radio" name="years" value="{{ y }}" {% if loop.first %}checked{% endif %} style="accent-color: var(--accent);">
+                            {{ y }} year{% if y != 1 %}s{% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="gap-row mt-3">
+                    <button type="submit" class="btn btn-accent" id="capsuleSubmit">Seal capsule</button>
+                </div>
+            </form>
+        </div>
+    </details>
+</div>
+
+{# ── Danger zone ── #}
+<hr class="divider">
+<details>
+    <summary style="font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); cursor: pointer; user-select: none;">Delete my account</summary>
+    <div style="margin-top: 1rem; padding: 1rem; border: 1px solid var(--faint);">
+        <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 1rem;">This will permanently delete your entry, all snapshots, and all capsules. There is no undo.</p>
+        <form method="POST" action="/delete" onsubmit="return confirm('Delete everything? This cannot be undone.');">
+            <button type="submit" class="btn" style="border-color: #c0392b; color: #c0392b;">Delete permanently</button>
+        </form>
+    </div>
+</details>
+
+{% endif %}{# end is_owner #}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function countWords(text) {
+        const t = text.trim();
+        return t ? t.split(/\s+/).length : 0;
+    }
+
+    // Main entry counter
+    const entryTextarea = document.getElementById('entry');
+    const wordCounter   = document.getElementById('wordCounter');
+    if (entryTextarea) {
+        const update = () => {
+            const n = countWords(entryTextarea.value);
+            wordCounter.textContent = n > 30 ? `${n} / 30 — too many words` : `${n} / 30`;
+            wordCounter.className = 'word-counter' + (n === 30 ? ' at-limit' : n > 30 ? ' over-limit' : '');
+        };
+        update();
+        entryTextarea.addEventListener('input', update);
+        document.getElementById('updateForm').addEventListener('submit', e => {
+            if (countWords(entryTextarea.value) > 30) { e.preventDefault(); entryTextarea.focus(); }
+        });
+    }
+
+    // Capsule entry counter
+    const capsuleTextarea = document.getElementById('capsule_entry');
+    const capsuleCounter  = document.getElementById('capsuleCounter');
+    if (capsuleTextarea) {
+        const updateCap = () => {
+            const n = countWords(capsuleTextarea.value);
+            capsuleCounter.textContent = n > 30 ? `${n} / 30 — too many words` : `${n} / 30`;
+            capsuleCounter.className = 'word-counter' + (n === 30 ? ' at-limit' : n > 30 ? ' over-limit' : '');
+        };
+        capsuleTextarea.addEventListener('input', updateCap);
+        document.getElementById('capsuleForm').addEventListener('submit', e => {
+            if (!capsuleTextarea.value.trim() || countWords(capsuleTextarea.value) > 30) {
+                e.preventDefault(); capsuleTextarea.focus();
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Admin — Brief{% endblock %}
+
+{% block content %}
+
+<h1><em>Admin</em></h1>
+
+{% if error %}<div class="error mt-3">{{ error }}</div>{% endif %}
+
+<form method="POST" action="/admin" style="margin-top: 2rem; max-width: 320px;">
+    <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password">
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-accent">Enter</button>
+    </div>
+</form>
+
+{% endblock %}

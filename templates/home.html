@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{% if claimed and user %}
+    {# ── Returning user — show their entry ── #}
+    <h1>Welcome back,<br><em>{{ user.username }}</em></h1>
+
+    {% if error %}
+        <div class="error mt-3">{{ error }}</div>
+    {% endif %}
+
+    <div class="entry-text">
+        {% if user.entry %}
+            "{{ user.entry }}"
+        {% else %}
+            <span style="color: var(--muted); font-style: normal; font-size: 0.9rem;">You haven't written anything yet.</span>
+        {% endif %}
+    </div>
+
+    <a href="/profile/{{ user.username }}" class="btn btn-accent">View my full profile</a>
+
+{% else %}
+    {# ── New visitor ── #}
+    <div style="margin-bottom: 3rem;">
+        <h1>Your life,<br>in <em>thirty words.</em></h1>
+        <p class="mt-3" style="max-width: 400px;">
+            No account. No password. Just a name you'll remember,
+            and thirty words that are true right now.
+            Every ninety days, a snapshot. A quiet record of a life.
+        </p>
+    </div>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/claim" id="claimForm">
+        <div class="field">
+            <label for="username">Choose a name — something memorable</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="e.g. Sisko68"
+                maxlength="20"
+                autocomplete="off"
+                spellcheck="false"
+            >
+            <div class="username-status" id="usernameStatus"></div>
+        </div>
+
+        <div class="field">
+            <label for="entry">Your life, right now — thirty words</label>
+            <textarea
+                id="entry"
+                name="entry"
+                placeholder="Teacher, father of two, making slow progress on too many things. Happier than I expected. Still learning how to be still."
+                maxlength="400"
+            ></textarea>
+            <div class="word-counter" id="wordCounter">0 / 30</div>
+        </div>
+
+        <div class="gap-row mt-3">
+            <button type="submit" class="btn btn-accent" id="submitBtn">Save my entry</button>
+            <span class="text-muted" style="font-size: 0.75rem;">Your claim link will be shown after saving.</span>
+        </div>
+    </form>
+
+    <hr class="divider">
+
+    <div>
+        <p class="label" style="margin-bottom: 1rem;">Already have a claim link?</p>
+        <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 1rem;">
+            Paste your claim link into your browser — it'll bring you straight back.
+        </p>
+    </div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const usernameInput = document.getElementById('username');
+    const usernameStatus = document.getElementById('usernameStatus');
+    const entryTextarea = document.getElementById('entry');
+    const wordCounter = document.getElementById('wordCounter');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // ── Word counter ──
+    function countWords(text) {
+        const trimmed = text.trim();
+        if (!trimmed) return 0;
+        return trimmed.split(/\s+/).length;
+    }
+
+    if (entryTextarea) {
+        entryTextarea.addEventListener('input', () => {
+            const count = countWords(entryTextarea.value);
+            wordCounter.textContent = `${count} / 30`;
+            wordCounter.className = 'word-counter';
+            if (count === 30) wordCounter.classList.add('at-limit');
+            if (count > 30) {
+                wordCounter.classList.add('over-limit');
+                wordCounter.textContent = `${count} / 30 — too many words`;
+            }
+        });
+    }
+
+    // ── Username availability check ──
+    let checkTimeout;
+
+    if (usernameInput) {
+        usernameInput.addEventListener('input', () => {
+            clearTimeout(checkTimeout);
+            const val = usernameInput.value.trim();
+
+            if (val.length < 3) {
+                usernameStatus.textContent = '';
+                usernameStatus.className = 'username-status';
+                return;
+            }
+
+            usernameStatus.textContent = 'checking…';
+            usernameStatus.className = 'username-status checking';
+
+            checkTimeout = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/check-username?username=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+                    if (data.available) {
+                        usernameStatus.textContent = `✓ ${val} is available`;
+                        usernameStatus.className = 'username-status available';
+                    } else {
+                        usernameStatus.textContent = `✗ ${val} is already taken`;
+                        usernameStatus.className = 'username-status taken';
+                    }
+                } catch {
+                    usernameStatus.textContent = '';
+                }
+            }, 400);
+        });
+    }
+
+    // ── Prevent submit if over word limit ──
+    const form = document.getElementById('claimForm');
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            const count = countWords(entryTextarea.value);
+            if (count > 30) {
+                e.preventDefault();
+                wordCounter.classList.add('over-limit');
+                entryTextarea.focus();
+            }
+        });
+    }
+</script>
+{% endblock %}

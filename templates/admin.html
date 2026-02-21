@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — Brief{% endblock %}
+
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 1rem; margin-bottom: 3rem;">
+    <h1><em>Dashboard</em></h1>
+    <a href="/admin/logout" class="btn btn-ghost" style="font-size: 0.55rem;">Log out</a>
+</div>
+
+{# ── Stat tiles ── #}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1px; border: 1px solid var(--faint); margin-bottom: 3rem;">
+    {% set tiles = [
+        ('Users', stats.total_users),
+        ('With entries', stats.total_entries),
+        ('Snapshots', stats.total_snapshots),
+        ('Groups', stats.total_groups),
+        ('Capsules', stats.total_capsules),
+        ('Capsules revealed', stats.revealed_caps),
+        ('In strangers feed', stats.strangers_count),
+        ('Active 30d', stats.active_30d),
+    ] %}
+    {% for label, value in tiles %}
+    <div style="padding: 1.25rem; background: var(--warm);">
+        <div style="font-family: var(--mono); font-size: 1.4rem; font-weight: 400; color: var(--ink); letter-spacing: -0.02em;">{{ value }}</div>
+        <div class="label" style="margin-top: 0.3rem; color: var(--muted);">{{ label }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+{# ── Recent users ── #}
+<div class="timeline">
+    <div class="timeline-header">10 most recent members</div>
+
+    {% for u in stats.recent_users %}
+    <div class="snapshot" style="grid-template-columns: 100px 1fr; padding: 0.85rem 0;">
+        <div class="snapshot-date">{{ u.created_at[:10] }}</div>
+        <div>
+            <a href="/profile/{{ u.username }}" style="font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.08em; color: var(--ink); text-decoration: none;">
+                {{ u.username }}
+            </a>
+            <div class="text-mono" style="color: var(--muted); margin-top: 0.2rem;">
+                last active {{ u.updated_at[:10] }}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--faint);">
+    <p class="text-muted" style="font-size: 0.75rem;">
+        No user content is shown here. Profile links above are for moderation purposes only.
+    </p>
+</div>
+
+{% endblock %}

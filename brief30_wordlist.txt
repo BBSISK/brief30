@@ -1,0 +1,33 @@
+# brief30_wordlist.txt
+# ─────────────────────────────────────────────────────────────
+# Custom profanity wordlist for Brief.
+# One word or phrase per line. Lines starting with # are ignored.
+# The better-profanity library also runs its own base list —
+# this file is for additions and local context.
+#
+# To add a word: just add a line and reload the app.
+# Words are matched case-insensitively.
+# ─────────────────────────────────────────────────────────────
+
+# Common asterisk-bypass patterns (f***, s***, etc handled in code)
+
+# Slurs and hate speech — extend as needed
+# (base library covers most; add regional variants here)
+
+# Irish/UK specific additions
+bollix
+bollocks
+shite
+wanker
+knobhead
+gobshite
+prick
+arsehole
+arsehead
+dickhead
+bellend
+twat
+minge
+slag
+slapper
+bastard
